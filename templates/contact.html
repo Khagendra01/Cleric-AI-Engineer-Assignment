@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cleric AI Engineer Assignment</title>
+    <!-- Latest compiled and minified CSS -->
+    <style>
+        body {
+            background-color: #f5f5f5;
+            /* Apple's signature gray background */
+            font-family: Arial, sans-serif;
+        }
+
+        .nav {
+            background-color: #333;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .nav a {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .nav a:hover {
+            color: #ccc;
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .hero {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-image: linear-gradient(to bottom, #333, #555);
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+            max-width: fit-content;
+        }
+
+
+        .spaced {
+            margin-right: 40px;
+        }
+
+        .nav {
+            justify-content: space-between;
+        }
+
+        .github-info {
+            display: inline-flex;
+            align-items: center;
+        }
+
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: #333;
+            color: #fff;
+            padding: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="nav">
+        <a class="nav-link spaced" href="/">Home</a>
+        <a class="nav-link spaced" href="/contact">Contact</a>
+    </nav>
+
+
+    <section class="hero">
+        <h1>Hi! I am Khagendra (K-gen)</h1>
+        <div class="github-info">
+            <p>Visit my GitHub!</p>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/2048px-Octicons-mark-github.svg.png"
+                alt="GitHub Logo" width="30" height="30">
+        </div><br>
+        <a href="https://github.com/khagendra01"><button id="github-button">here</button></a>
+    </section>
+
+
+
+    <div class="footer">
+        <p>&copy;  K-Gen</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var button = document.getElementById('github-button');
+            button.addEventListener('click', function () {
+                button.textContent = 'loading...';
+            });
+        });
+
+    </script>
+
+</body>
+
+</html>
