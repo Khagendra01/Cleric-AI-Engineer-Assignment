@@ -2,8 +2,8 @@ import requests
 
 # Test the /submit_question_and_documents endpoint
 payload = {
-    'question': 'Who is the nitish?',
-    'documents': ['https://pratidin.org/about', 'https://learnwith.campusx.in/aboutus']
+    'question': 'What is pratidin?',
+    'documents': ['https://pratidin.org/about']
 }
 response = requests.post('http://localhost:5000/submit_question_and_documents', data=payload)
 data = response.json()

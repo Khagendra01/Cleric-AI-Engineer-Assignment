@@ -126,8 +126,6 @@ def get_question_and_facts_app():
     global processing_status
     global gQuestion
     global gResult
-
-    response = GetQuestionAndFactsResponse(question=gQuestion, facts=gResult, status=processing_status)
     return render_template('response.html', response=gResult)
 
 #APIS
