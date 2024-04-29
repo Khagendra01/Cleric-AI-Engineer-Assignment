@@ -84,7 +84,7 @@ def contact():
     return render_template('contact.html')
 
 @app.route('/submit_question_and_documents_app', methods=['post'])
-def submit_question_and_documents():
+def submit_question_and_documents_app():
     global processing_status
     global gQuestion
     global gResult
@@ -93,9 +93,13 @@ def submit_question_and_documents():
     question = request.form.get('question')
     documents = request.form.getlist('documents')
 
+    document = documents[0].split()
+
+    print(document)
+
     gQuestion = question
 
-    knowledgeBase = get_vectorstore_from_url(documents)
+    knowledgeBase = get_vectorstore_from_url(document)
 
     retriever_chain = get_context_retriever_chain(knowledgeBase)
 
@@ -118,7 +122,7 @@ def submit_question_and_documents():
     return render_template('response.html')
 
 @app.route('/get_question_and_facts_app', methods=['GET'])
-def get_question_and_facts():
+def get_question_and_facts_app():
     global processing_status
     global gQuestion
     global gResult
