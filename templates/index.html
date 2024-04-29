@@ -128,10 +128,14 @@
 			<h2></h2>
 			<form action="/submit_question_and_documents_app" method="post">
 				<label for="question">Question:</label>
-				<input type="text" id="question" name="question"><br><br>
+				<input required type="text" id="question" name="question"><br><br>
 				<label for="documents">Documents</label>
-				<textarea id="documents" name="documents"></textarea><br><br>
+				<textarea style="width: 300px; height: 150px;" required id="documents" name="documents"></textarea><br><br>
+				{% if fail %}
+				<p style="color:red">{{ fail }}</p>
+				{% endif %}
 				<input type="submit" value="Submit">
+				
 			</form>
 		</section>
 	</div>

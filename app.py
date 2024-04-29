@@ -11,6 +11,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import RetrievalQA
+from flask import send_from_directory
 
 import re
 app = Flask(__name__)
@@ -57,14 +58,14 @@ def get_context_retriever_chain(vector_store):
     ])
     
     retriever_chain = create_history_aware_retriever(llm, retriever, prompt)
-    return retriever_chain
+    return retriever
 
 def get_conversational_rag_chain(retriever_chain): 
     
     llm = ChatOpenAI()
     
     prompt = ChatPromptTemplate.from_messages([
-      ("system", "Answer the user's questions in points by using `-` to separate point, on the below context:\n\n{context}"),
+      ("system", "The context is about a team call log. Act like a supervisor and notice all the decision made. Answer the user question in points by using '-' to separate point, and also by saying 'The team has' in each point:\n\n{context}"),
       MessagesPlaceholder(variable_name="chat_history"),
       ("user", "{input}"),
     ])
@@ -72,7 +73,6 @@ def get_conversational_rag_chain(retriever_chain):
     stuff_documents_chain = create_stuff_documents_chain(llm,prompt)
     
     return create_retrieval_chain(retriever_chain, stuff_documents_chain)
-
 
 
 @app.route('/')
@@ -95,11 +95,12 @@ def submit_question_and_documents_app():
 
     document = documents[0].split()
 
-    print(document)
-
     gQuestion = question
 
-    knowledgeBase = get_vectorstore_from_url(document)
+    try:
+        knowledgeBase = get_vectorstore_from_url(document)
+    except Exception as e:
+        return render_template('index.html', fail="Invalid url, or can not parse the url")
 
     retriever_chain = get_context_retriever_chain(knowledgeBase)
 
@@ -141,7 +142,10 @@ def submit_question_and_documents():
 
     gQuestion = question
 
-    knowledgeBase = get_vectorstore_from_url(documents)
+    try:
+        knowledgeBase = get_vectorstore_from_url(documents)
+    except Exception as e:
+        return jsonify({"status": "error", "message": "Invalid url, or can not parse the url"}), 500
 
     retriever_chain = get_context_retriever_chain(knowledgeBase)
 
@@ -174,6 +178,9 @@ def get_question_and_facts():
     response = GetQuestionAndFactsResponse(question=gQuestion, facts=gResult, status=processing_status)
     return jsonify(response.dict()), 200
 
+@app.route('/test/<path:path>')
+def send_test(path):
+    return send_from_directory('test', path)
 
 
 if __name__ == '__main__':
