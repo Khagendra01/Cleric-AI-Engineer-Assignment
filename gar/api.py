@@ -13,6 +13,7 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import RetrievalQA
 
 import re
+
 app = Flask(__name__)
 
 processing_status = "not-started"
@@ -83,50 +84,6 @@ def index():
 def contact():
     return render_template('contact.html')
 
-@app.route('/submit_question_and_documents_app', methods=['post'])
-def submit_question_and_documents():
-    global processing_status
-    global gQuestion
-    global gResult
-
-    processing_status = "processing"
-    question = request.form.get('question')
-    documents = request.form.getlist('documents')
-
-    gQuestion = question
-
-    knowledgeBase = get_vectorstore_from_url(documents)
-
-    retriever_chain = get_context_retriever_chain(knowledgeBase)
-
-    conversation_rag_chain = get_conversational_rag_chain(retriever_chain)
-
-    chat_history = []
-
-    responses = conversation_rag_chain.invoke({
-        "chat_history": chat_history,
-        "input": question
-    })
-    
-    response = responses['answer']
-    items = response.split('-')
-
-    items = [item.strip() for item in items if item.strip()]
-
-    gResult = items
-    processing_status = "done"
-    return render_template('response.html')
-
-@app.route('/get_question_and_facts_app', methods=['GET'])
-def get_question_and_facts():
-    global processing_status
-    global gQuestion
-    global gResult
-
-    response = GetQuestionAndFactsResponse(question=gQuestion, facts=gResult, status=processing_status)
-    return render_template('response.html', response=gResult)
-
-#APIS
 @app.route('/submit_question_and_documents', methods=['post'])
 def submit_question_and_documents():
     global processing_status
@@ -171,7 +128,6 @@ def get_question_and_facts():
 
     response = GetQuestionAndFactsResponse(question=gQuestion, facts=gResult, status=processing_status)
     return jsonify(response.dict()), 200
-
 
 
 if __name__ == '__main__':

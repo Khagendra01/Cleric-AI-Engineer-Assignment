@@ -122,18 +122,29 @@
 		<a class="nav-link spaced" href="/">Home</a>
 		<a class="nav-link spaced" href="/contact">Contact</a>
 	</nav>
-
+   
 	<div class="main">
+
+		{% if not response %}
 		<section class="form">
 			<h2></h2>
-			<form action="/submit_question_and_documents_app" method="post">
-				<label for="question">Question:</label>
-				<input type="text" id="question" name="question"><br><br>
-				<label for="documents">Documents</label>
-				<textarea id="documents" name="documents"></textarea><br><br>
-				<input type="submit" value="Submit">
+			<form action="/get_question_and_facts_app" method="get">
+				<input type="submit" value="get Result">
 			</form>
 		</section>
+		{% endif %}
+
+		{% if response %}
+		<section class="response bg">
+			<ul>
+				{% for i in response %}
+					<li><h2>{{ i }}</h2></li>
+				{% endfor %}
+			</ul>
+		</section>
+		{% endif %}
+	
+
 	</div>
 
 
