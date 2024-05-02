@@ -1,6 +1,7 @@
+import asyncio
 from flask import Flask, request, render_template, jsonify
 from pydantic import BaseModel
-
+import threading
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_community.document_loaders import WebBaseLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -16,57 +17,69 @@ from flask import send_from_directory
 import re
 app = Flask(__name__)
 
-processing_status = "not-started"
-gQuestion = ""
-gResult = []
+processing_status = "idle"
+gQuestion = None
+gResult = None
 
 class GetQuestionAndFactsResponse(BaseModel):
     question: str
     facts: list[str]
     status: str
 
-def get_vectorstore_from_url(urls):
-    # Load multiple URLs concurrently
-    loaders = [WebBaseLoader(url) for url in urls]
+def process_question_and_documents(question, documents):
+    global processing_status
+    global gQuestion
+    global gResult
+
+    processing_status = "processing"
+    gQuestion = question
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        knowledgeBase = loop.run_until_complete(get_vectorstore_from_url(documents))
+        retriever = loop.run_until_complete(knowledgeBase.as_retriever())
+        conversation_rag_chain = get_conversational_rag_chain(retriever)
+
+        responses = conversation_rag_chain.invoke({"input": question})
+        response = responses['answer']
+        items = response.split('+')
+        items = [item.strip() for item in items if item.strip()]
+
+        gResult = items
+        processing_status = "done"
+    except Exception as e:
+        processing_status = "error"
+        print(f"Error processing question and documents: {e}")
+
+async def load_document(url: str):
+    loader = WebBaseLoader(url)
+    return await loader.load()
+
+async def get_vectorstore_from_url(urls):
+    tasks = [load_document(url) for url in urls]
+    documents = await asyncio.gather(*tasks)
     
-    alldocuments = []
-    for loader in loaders:
-        # Load the document
-        document = loader.load()
-        
+    # Initialize the vector store
+    vector_store = None
+    for document in documents:
         # Split the document into chunks
         text_splitter = RecursiveCharacterTextSplitter()
         document_chunks = text_splitter.split_documents(document)
         
-        # Append chunks to the list of all documents
-        alldocuments.extend(document_chunks)
-    
-    # Create a vectorstore from the chunks
-    vector_store = FAISS.from_documents(alldocuments, OpenAIEmbeddings())
+        if vector_store is None:
+            vector_store = FAISS.from_documents(document_chunks, OpenAIEmbeddings())
+        else:
+            vector_store.add_documents(document_chunks, OpenAIEmbeddings())
     
     return vector_store
 
-def get_context_retriever_chain(vector_store):
-    llm = ChatOpenAI()
-    
-    retriever = vector_store.as_retriever()
-    
-    prompt = ChatPromptTemplate.from_messages([
-      MessagesPlaceholder(variable_name="chat_history"),
-      ("user", "{input}"),
-      ("user", "Given the above conversation, generate a search query to look up in order to get information relevant to the conversation")
-    ])
-    
-    retriever_chain = create_history_aware_retriever(llm, retriever, prompt)
-    return retriever
-
 def get_conversational_rag_chain(retriever_chain): 
     
-    llm = ChatOpenAI()
+    llm = ChatOpenAI(model="gpt-4")
     
     prompt = ChatPromptTemplate.from_messages([
-      ("system", "The context is about a team call log. Act like a supervisor and notice all the decision made. Answer the user question in points by using '-' to separate point, and also by saying 'The team has' in each point:\n\n{context}"),
-      MessagesPlaceholder(variable_name="chat_history"),
+      ("system", "The context is about a team call log. Act like a supervisor and notice all the facts. Answer the user question in concise point. Each point should start with 'The team has' and separated by using '+'. Use only positive sentences. :\n\n{context}"),
       ("user", "{input}"),
     ])
     
@@ -85,41 +98,11 @@ def contact():
 
 @app.route('/submit_question_and_documents_app', methods=['post'])
 def submit_question_and_documents_app():
-    global processing_status
-    global gQuestion
-    global gResult
-
-    processing_status = "processing"
     question = request.form.get('question')
     documents = request.form.getlist('documents')
 
-    document = documents[0].split()
-
-    gQuestion = question
-
-    try:
-        knowledgeBase = get_vectorstore_from_url(document)
-    except Exception as e:
-        return render_template('index.html', fail="Invalid url, or can not parse the url")
-
-    retriever_chain = get_context_retriever_chain(knowledgeBase)
-
-    conversation_rag_chain = get_conversational_rag_chain(retriever_chain)
-
-    chat_history = []
-
-    responses = conversation_rag_chain.invoke({
-        "chat_history": chat_history,
-        "input": question
-    })
-    
-    response = responses['answer']
-    items = response.split('-')
-
-    items = [item.strip() for item in items if item.strip()]
-
-    gResult = items
-    processing_status = "done"
+    # Run the processing in a separate thread
+    threading.Thread(target=process_question_and_documents, args=(question, documents)).start()
     return render_template('response.html')
 
 @app.route('/get_question_and_facts_app', methods=['GET'])
@@ -130,42 +113,15 @@ def get_question_and_facts_app():
     return render_template('response.html', response=gResult)
 
 #APIS
+
 @app.route('/submit_question_and_documents', methods=['post'])
 def submit_question_and_documents():
-    global processing_status
-    global gQuestion
-    global gResult
-
-    processing_status = "processing"
+    
     question = request.form.get('question')
     documents = request.form.getlist('documents')
 
-    gQuestion = question
-
-    try:
-        knowledgeBase = get_vectorstore_from_url(documents)
-    except Exception as e:
-        return jsonify({"status": "error", "message": "Invalid url, or can not parse the url"}), 500
-
-    retriever_chain = get_context_retriever_chain(knowledgeBase)
-
-    conversation_rag_chain = get_conversational_rag_chain(retriever_chain)
-
-    chat_history = []
-
-    responses = conversation_rag_chain.invoke({
-        "chat_history": chat_history,
-        "input": question
-    })
-    
-    response = responses['answer']
-    items = response.split('-')
-
-    items = [item.strip() for item in items if item.strip()]
-
-    gResult = items
-    processing_status = "done"
-
+    # Run the processing in a separate thread
+    threading.Thread(target=process_question_and_documents, args=(question, documents)).start()
 
     return jsonify({'message': 'Question and documents submitted successfully'}), 200
 
@@ -174,6 +130,9 @@ def get_question_and_facts():
     global processing_status
     global gQuestion
     global gResult
+
+    if gResult is None:
+        gResult = [] # Or any other appropriate default value
 
     response = GetQuestionAndFactsResponse(question=gQuestion, facts=gResult, status=processing_status)
     return jsonify(response.dict()), 200
